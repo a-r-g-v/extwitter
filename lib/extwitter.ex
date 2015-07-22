@@ -381,6 +381,14 @@ defmodule ExTwitter do
   @spec stream_sample(Keyword.t) :: Enumerable.t
   defdelegate stream_sample(options), to: ExTwitter.API.Streaming
 
+  ## WIP 
+  ## UserStream
+  @spec stream_user :: Enumerable.t
+  defdelegate stream_user, to: ExTwitter.API.Streaming
+
+  @spec stream_user(Keyword.t) :: Enumerable.t
+  defdelegate stream_user(options), to: ExTwitter.API.Streaming
+
   @doc """
   POST statuses/filter
 

@@ -28,7 +28,7 @@ defmodule ExTwitter.Mixfile do
       {:oauth, github: "tim/erlang-oauth"},
       {:poison, "~> 1.3"},
       {:timex, "~> 0.13"},
-      {:exvcr, "~> 0.3", only: [:dev, :test]},
+      {:exvcr, "~> 0.4", only: [:dev, :test]},
       {:excoveralls, "~> 0.3", only: [:dev, :test]},
       {:meck, "~> 0.8.2", only: :test},
       {:mock, github: "parroty/mock", only: [:dev, :test], branch: "fix"},

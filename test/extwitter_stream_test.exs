@@ -43,6 +43,22 @@ defmodule ExTwitterStreamTest do
     assert tweet.text =~ ~r/sample tweet text/
   end
 
+  test_with_mock "gets twetter user stream", :oauth,
+    [get: fn(_url, _params, _consumer, _access_token, _access_token_secret, _options) ->
+      request_id = make_ref
+      TestHelper.TestStore.set({self, request_id})
+      {:ok, request_id}
+    end] do
+
+    stream = ExTwitter.stream_user
+
+    wait_async_request_initialization
+    send_mock_data(TestHelper.TestStore.get, @mock_tweet_json)
+
+    tweet = Enum.take(stream, 1) |> List.first
+    assert tweet.text =~ ~r/sample tweet text/
+  end
+
   test_with_mock "gets twetter filter stream", :oauth,
     [post: fn(_url, _params, _consumer, _access_token, _access_token_secret, _options) ->
       request_id = make_ref

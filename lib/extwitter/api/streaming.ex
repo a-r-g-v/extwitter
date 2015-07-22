@@ -5,21 +5,26 @@ defmodule ExTwitter.API.Streaming do
 
   @doc """
   The default timeout value (in milliseconds) for how long keeps waiting until next message arrives.
-  """
+  """ 
   @default_stream_timeout 60_000
   @default_control_timeout 10_000
 
   def stream_sample(options \\ []) do
     {options, configs} = seperate_configs_from_options(options)
     params = ExTwitter.Parser.parse_request_params(options)
-    pid = async_request(self, :get, "1.1/statuses/sample.json", params, configs)
+    pid = async_request(self, :get, :dev, "1.1/statuses/sample.json", params, configs)
     create_stream(pid, @default_stream_timeout)
-  end
-
+  end 
+  def stream_user(options \\ []) do
+    {options, configs} = seperate_configs_from_options(options)
+    params = ExTwitter.Parser.parse_request_params(options)
+    pid = async_request(self, :get, :user, "1.1/user.json", params, configs)
+    create_stream(pid, @default_stream_timeout)
+  end 
   def stream_filter(options, timeout \\ @default_stream_timeout) do
     {options, configs} = seperate_configs_from_options(options)
     params = ExTwitter.Parser.parse_request_params(options)
-    pid = async_request(self, :post, "1.1/statuses/filter.json", params, configs)
+    pid = async_request(self, :post, :dev, "1.1/statuses/filter.json", params, configs)
     create_stream(pid, timeout)
   end
 
@@ -45,13 +50,13 @@ defmodule ExTwitter.API.Streaming do
     end
   end
 
-  defp async_request(processor, method, path, params, configs) do
+  defp async_request(processor, method, domain, path, params, configs) do
     oauth = ExTwitter.Config.get_tuples |> ExTwitter.API.Base.verify_params
     consumer = {oauth[:consumer_key], oauth[:consumer_secret], :hmac_sha1}
 
     spawn(fn ->
       response = ExTwitter.OAuth.request_async(
-        method, request_url(path), params, consumer, oauth[:access_token], oauth[:access_token_secret])
+        method, request_url(domain, path), params, consumer, oauth[:access_token], oauth[:access_token_secret])
 
       case response do
         {:ok, request_id} ->
@@ -134,16 +139,20 @@ defmodule ExTwitter.API.Streaming do
     try do
       case ExTwitter.JSON.decode(json) do
         {:ok, tweet} ->
-          if Map.has_key?(tweet, :id_str) do
+          cond do
+           Map.has_key?(tweet, :id_str) == true ->
             {:stream, ExTwitter.Parser.parse_tweet(tweet)}
-          else
+           Map.has_key?(tweet, :event) == true ->
+            {:stream, parse_event(tweet)}
+           Map.has_key?(tweet, :friends) == true ->
+            IO.puts "detected friends"
+           true ->
             if configs[:receive_messages] do
               parse_control_message(tweet)
             else
               nil
             end
           end
-
         {:error, error} ->
           {:error, {error, json}}
       end
@@ -152,6 +161,26 @@ defmodule ExTwitter.API.Streaming do
         IO.inspect [error: error, json: json]
         nil
     end
+  end
+
+  #WIP
+  def parse_event(object) do
+   try do
+    case object do
+      %{:event => favorite} ->
+        IO.puts "favorite"
+      %{:event => unfavorite} ->
+        IO.puts "unfavorite"
+      %{:event => follow}->
+        IO.puts "follow"
+      %{:event => unfollow}->
+        IO.puts "unfollow"
+    end
+   rescue
+     error ->
+       IO.inspect [error: error, object: object]
+       nil
+   end
   end
 
   defp parse_control_message(message) do
@@ -171,7 +200,12 @@ defmodule ExTwitter.API.Streaming do
     end
   end
 
-  defp request_url(path) do
-    "https://stream.twitter.com/#{path}" |> to_char_list
+  defp request_url(domain, path) do
+    case domain do
+      :dev ->
+        "https://stream.twitter.com/#{path}" |> to_char_list
+      :user ->
+        "https://userstream.twitter.com/#{path}" |> to_char_list
+    end
   end
 end
